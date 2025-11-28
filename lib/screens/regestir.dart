@@ -1,17 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:quiz_app/screens/Home_page.dart';
 import 'package:quiz_app/wigets/butom.dart';
 import 'package:quiz_app/wigets/text_field.dart';
 import 'package:quiz_app/screens/log_in.dart';
+import 'package:quiz_app/cubits/auth_cubit.dart';
+import 'package:quiz_app/models/register_model.dart';
 
-class RegisterPage extends StatelessWidget {
+class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
+
+  @override
+  State<RegisterPage> createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  late TextEditingController usernameController;
+  late TextEditingController emailController;
+  late TextEditingController ageController;
+  late TextEditingController passwordController;
+  late TextEditingController confirmPasswordController;
 
   static const Color mainGreen = Color(0xFF0D4726);
   static const Color accentGreen = Color(0xFF1E6B3C);
   static const Color beigeLight = Color(0xFFFDF6EE);
   static const Color beigeDark = Color(0xFFF3DEC4);
   static const Color headingMuted = Color.fromARGB(200, 51, 89, 82);
+
+  @override
+  void initState() {
+    super.initState();
+    usernameController = TextEditingController();
+    emailController = TextEditingController();
+    ageController = TextEditingController();
+    passwordController = TextEditingController();
+    confirmPasswordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    emailController.dispose();
+    ageController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _showErrorDialog(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  bool _validateForm() {
+    final registerData = RegisterModel(
+      username: usernameController.text,
+      email: emailController.text,
+      password: passwordController.text,
+      confirmPassword: confirmPasswordController.text,
+      age: int.tryParse(ageController.text),
+    );
+
+    final validationError = registerData.validate();
+    if (validationError != null) {
+      _showErrorDialog(validationError);
+      return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,60 +107,55 @@ class RegisterPage extends StatelessWidget {
                                 fit: BoxFit.contain,
                               ),
                             ),
-                            SizedBox(width: 20,),
+                            const SizedBox(width: 20),
                             Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    const Text(
-      'Sign up',
-      style: TextStyle(
-        color: mainGreen,
-        fontSize: 35,
-        fontWeight: FontWeight.bold,
-      ),
-    ),
-    const SizedBox(height: 8),
-    const Text(
-      'Create a new account',
-      style: TextStyle(
-        color: Color.fromARGB(200, 51, 89, 82),
-        fontSize: 22,
-      ),
-    ),
-  ],
-),
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Sign up',
+                                  style: TextStyle(
+                                    color: mainGreen,
+                                    fontSize: 35,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Create a new account',
+                                  style: TextStyle(
+                                    color: Color.fromARGB(200, 51, 89, 82),
+                                    fontSize: 22,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
-                        // const SizedBox(height: 8),
-                        // Text(
-                        //   'Join our App to unlock personalized quizzes, reminders, and progress tracking.',
-                        //   style: TextStyle(
-                        //     color: mainGreen.withOpacity(0.7),
-                        //     fontSize: 14,
-                        //     height: 1.4,
-                        //   ),
-                        // ),
                       ],
                     ),
                     const SizedBox(height: 24),
-                     CustomTextField(
+                    CustomTextField(
+                      controller: usernameController,
                       hintText: 'Username',
                       prefixIcon: Icons.person_outline,
                     ),
                     const SizedBox(height: 16),
-                     CustomTextField(
+                    CustomTextField(
+                      controller: emailController,
                       hintText: 'Email',
                       prefixIcon: Icons.mail_outline,
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
-                   CustomTextField(
+                    CustomTextField(
+                      controller: ageController,
                       hintText: 'Age',
                       prefixIcon: Icons.cake_outlined,
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
-                     CustomTextField(
+                    CustomTextField(
+                      controller: passwordController,
                       hintText: 'Password',
                       prefixIcon: Icons.lock_outline,
                       obscureText: true,
@@ -117,19 +169,44 @@ class RegisterPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                     CustomTextField(
+                    CustomTextField(
+                      controller: confirmPasswordController,
                       hintText: 'Confirm Password',
                       prefixIcon: Icons.lock_reset_outlined,
                       obscureText: true,
                     ),
                     const SizedBox(height: 28),
-                    CustomButton(
-                      text: 'Register',
-                      elevation: 6,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const HomePage()),
+                    BlocConsumer<AuthCubit, AuthState>(
+                      listener: (context, state) {
+                        if (state is AuthAuthenticated) {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (_) => const HomePage(),
+                            ),
+                          );
+                        } else if (state is AuthError) {
+                          _showErrorDialog(state.message);
+                        }
+                      },
+                      builder: (context, state) {
+                        if (state is AuthLoading) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        return CustomButton(
+                          text: 'Register',
+                          elevation: 6,
+                          onTap: () {
+                            if (!_validateForm()) {
+                              return;
+                            }
+                            context.read<AuthCubit>().register(
+                                  username: usernameController.text,
+                                  email: emailController.text,
+                                  password: passwordController.text,
+                                );
+                          },
                         );
                       },
                     ),
@@ -142,12 +219,13 @@ class RegisterPage extends StatelessWidget {
                           style: TextStyle(color: mainGreen.withOpacity(0.6)),
                         ),
                         GestureDetector(
-                        onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) =>  LoginPage()),
-                        );
-                      },
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const LoginPage()),
+                            );
+                          },
                           child: const Text(
                             'Log in',
                             style: TextStyle(

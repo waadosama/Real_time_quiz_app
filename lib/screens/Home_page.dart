@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:quiz_app/wigets/add_category.dart';
+import 'package:quiz_app/wigets/course_card.dart';
 import 'package:quiz_app/screens/quizes.dart';
 
 class HomePage extends StatelessWidget {
@@ -54,7 +54,7 @@ class HomePage extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          SizedBox(height: 20),
+                          SizedBox(height: 5),
                           Text(
                             'Start your quiz journey now…',
                             style: TextStyle(
@@ -187,24 +187,36 @@ class HomePage extends StatelessWidget {
                   crossAxisSpacing: 18,
                   childAspectRatio: 1.05,
                   children: [
-                    add_categorey(
+                    CourseCard(
                       text: 'Computer Science',
-                      icon: Icons.code,
-                     onTap: () {
+                      imagePath: 'assets/images/exam.png',
+                      onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const Quizes()),
                         );
                       },
                     ),
-                    add_categorey(text: 'Math 1', icon: Icons.calculate),
-                    add_categorey(text: 'Creative', icon: Icons.psychology),
-                    add_categorey(
-                      text: 'Data Structure',
-                      icon: Icons.data_object,
+                    CourseCard(
+                      text: 'Math 1',
+                      imagePath: 'assets/images/innovation.png',
                     ),
-                    add_categorey(text: 'Electronics', icon: Icons.memory),
-                    add_categorey(text: 'AI', icon: Icons.smart_toy),
+                    CourseCard(
+                      text: 'Creative',
+                      imagePath: 'assets/images/medal.png',
+                    ),
+                    CourseCard(
+                      text: 'Data Structure',
+                      imagePath: 'assets/images/exam.png',
+                    ),
+                    CourseCard(
+                      text: 'Electronics',
+                      imagePath: 'assets/images/innovation.png',
+                    ),
+                    CourseCard(
+                      text: 'AI',
+                      imagePath: 'assets/images/medal.png',
+                    ),
                   ],
                 ),
                 const SizedBox(height: 32),

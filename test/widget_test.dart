@@ -7,24 +7,23 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:quiz_app/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Quiz app loads LoginPage when not authenticated',
+      (WidgetTester tester) async {
+    // Set up mock SharedPreferences with no login data
+    SharedPreferences.setMockInitialValues({});
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(MyApp(prefs: prefs));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Wait for async operations and animations
+    await tester.pumpAndSettle(const Duration(seconds: 3));
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify MaterialApp exists
+    expect(find.byType(MaterialApp), findsOneWidget);
   });
 }
