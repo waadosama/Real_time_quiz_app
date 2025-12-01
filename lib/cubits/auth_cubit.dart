@@ -88,4 +88,39 @@ class AuthCubit extends Cubit<AuthState> {
   UserModel? getCurrentUser() {
     return storageService.getUser();
   }
+
+
+}
+
+class CoursesCubit extends Cubit<CoursesState> {
+  final FirebaseFirestore _firestore;
+
+  CoursesCubit({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance,
+        super(CoursesInitial());
+
+  /// Load courses from Firebase once (not watching)
+  Future<void> loadCourses() async {
+    emit(CoursesLoading());
+    try {
+      final snapshot = await _firestore.collection('courses').get();
+
+      final courses = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? 'Unnamed Course',
+          'imagePath': data['imagePath'] ?? 'assets/images/exam.png',
+          'description': data['description'] ?? '',
+        };
+      }).toList();
+
+      emit(CoursesLoaded(courses));
+    } catch (e) {
+      emit(CoursesError('Failed to load courses: $e'));
+    }
+  }
+
+  /// Refresh courses
+  Future<void> refreshCourses() => loadCourses();
 }

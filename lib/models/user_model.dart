@@ -11,7 +11,6 @@ class UserModel {
     this.loginTime,
   });
 
-  // Convert to JSON for storage
   Map<String, dynamic> toJson() {
     return {
       'username': username,
@@ -21,7 +20,7 @@ class UserModel {
     };
   }
 
-  // Create from JSON
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       username: json['username'] ?? '',
@@ -31,8 +30,6 @@ class UserModel {
           json['loginTime'] != null ? DateTime.parse(json['loginTime']) : null,
     );
   }
-
-  // Create empty user
   factory UserModel.empty() {
     return UserModel(
       username: '',

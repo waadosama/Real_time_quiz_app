@@ -30,6 +30,10 @@ class _QuizTimerState extends State<QuizTimer> {
 
   void _startTimer() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        _timer.cancel();
+        return;
+      }
       setState(() {
         if (_remainingSeconds > 0) {
           _remainingSeconds--;
@@ -52,32 +56,16 @@ class _QuizTimerState extends State<QuizTimer> {
     final thirdDuration = totalSeconds ~/ 3;
 
     if (_remainingSeconds > thirdDuration * 2) {
-      // First third: Green (0-33%)
       return const Color(0xFF0D4726);
     } else if (_remainingSeconds > thirdDuration) {
-      // Second third: Yellow/Orange (33-66%)
       return const Color(0xFFF59E0B);
     } else {
-      // Final third: Red (66-100%)
       return const Color(0xFFDC2626);
     }
   }
 
-  // Border color follows the same phase as the timer: green -> orange -> red
   Color _getBorderColor() {
-    final totalSeconds = widget.durationMinutes * 60;
-    final thirdDuration = totalSeconds ~/ 3;
-
-    if (_remainingSeconds > thirdDuration * 2) {
-      // plenty: green
-      return const Color(0xFF0D4726);
-    } else if (_remainingSeconds > thirdDuration) {
-      // mid: orange
-      return const Color(0xFFF59E0B);
-    } else {
-      // final: red
-      return const Color(0xFFDC2626);
-    }
+    return _getTimerColor();
   }
 
   String _formatTime() {
@@ -99,86 +87,81 @@ class _QuizTimerState extends State<QuizTimer> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     final timerColor = _getTimerColor();
     final phase = _getTimerPhase();
     final borderColor = _getBorderColor();
     final padding = widget.compact
-        ? const EdgeInsets.symmetric(horizontal: 10, vertical: 6)
-        : const EdgeInsets.symmetric(horizontal: 20, vertical: 12);
-    final iconSize = widget.compact ? 18.0 : 24.0;
-    final fontSizeMain = widget.compact ? 14.0 : 20.0;
-    final fontSizeSub = widget.compact ? 10.0 : 12.0;
-    final borderWidth = widget.compact ? 1.6 : 2.5;
-    final radius = widget.compact ? 10.0 : 16.0;
+        ? const EdgeInsets.symmetric(horizontal: 15, vertical: 10.0)
+        : const EdgeInsets.symmetric(horizontal: 11, vertical: 6.0);
+    final iconSize = widget.compact ? 20.0 : 13.0;
+    final fontSizeMain = widget.compact ? 20.0 : 13.0;
+    final fontSizeSub = widget.compact ? 16.0 : 15.0;
+
+    final borderWidth = widget.compact ? 0.5 : 0.8;
+    final radius = widget.compact ? 6.0 : 8.0;
+
+    final timeTextStyle = TextStyle(
+      fontSize: fontSizeMain,
+      fontWeight: FontWeight.bold,
+      color: timerColor,
+      letterSpacing: 0.5,
+    );
+
+    final timeTextContainer = Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: widget.compact ? 2 : 3, vertical: widget.compact ? 0 : 1),
+      decoration: BoxDecoration(
+        color: timerColor.withOpacity(
+            _remainingSeconds <= (widget.durationMinutes * 60) ~/ 3
+                ? 0.15
+                : 0.0),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(_formatTime(), style: timeTextStyle),
+    );
 
     return Container(
-      padding: padding,
+      padding: padding, // Uses the smallest vertical padding
       decoration: BoxDecoration(
         border: Border.all(
           color: borderColor,
           width: borderWidth,
         ),
         borderRadius: BorderRadius.circular(radius),
-        // Fill the whole timer container with the phase color (stronger opacity)
-        color: borderColor.withOpacity(widget.compact ? 0.12 : 0.18),
+        color: borderColor.withOpacity(widget.compact ? 0.2 : 0.1),
       ),
+      // The main Row contains all elements
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment:
+            CrossAxisAlignment.center, // Align items vertically in the center
         children: [
+          // 1. Icon
           Icon(
             Icons.schedule,
             color: timerColor,
             size: iconSize,
           ),
-          if (!widget.compact)
-            const SizedBox(width: 12)
-          else
-            const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Time text: highlight when in the final phase
-              Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: widget.compact ? 4 : 6,
-                    vertical: widget.compact ? 2 : 4),
-                decoration: BoxDecoration(
-                  color: timerColor.withOpacity(
-                      _remainingSeconds <= (widget.durationMinutes * 60) ~/ 3
-                          ? 0.12
-                          : 0.0),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  _formatTime(),
-                  style: TextStyle(
-                    fontSize: fontSizeMain,
-                    fontWeight:
-                        _remainingSeconds <= (widget.durationMinutes * 60) ~/ 3
-                            ? FontWeight.w800
-                            : FontWeight.bold,
-                    color: timerColor,
-                    letterSpacing: 1,
-                  ),
-                ),
+
+          // Minimal spacing
+          const SizedBox(width: 4),
+
+          timeTextContainer,
+
+          if (!widget.compact) ...[
+            const SizedBox(width: 8), // Spacing between time and phase
+            Text(
+              '(${phase})', // Wrapped in parentheses to look cleaner next to time
+              style: TextStyle(
+                fontSize: fontSizeSub,
+                color: timerColor.withOpacity(0.7), // Slightly dimmer color
+                fontWeight: FontWeight.w600,
               ),
-              if (!widget.compact)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(
-                    phase,
-                    style: TextStyle(
-                      fontSize: fontSizeSub,
-                      // use a light beige highlight color for the phase text
-                      color: const Color(0xFFF5E6D3),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
