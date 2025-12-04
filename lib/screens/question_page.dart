@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quiz_app/models/questions.dart';
 import 'package:quiz_app/wigets/quiz_timer.dart';
 import '../wigets/true_or_false.dart';
 
@@ -8,11 +9,10 @@ class QuestionPage extends StatefulWidget {
   static const Color beigeLight = Color(0xFFFDF6EE);
   static const Color tileFill = Color(0xFFF2E6D1);
 
-  final List<Map<String, dynamic>> questions;
+  final List<QuestionModel> questions;
   final int initialIndex;
   final int durationMinutes;
-  final void Function(Map<String, dynamic> question, int selectedIndex)?
-      onAnswer;
+  final void Function(QuestionModel question, int selectedIndex)? onAnswer;
 
   final VoidCallback? onSubmit;
 
@@ -48,13 +48,8 @@ class _QuestionPageState extends State<QuestionPage> {
       _selectedAnswers[_currentIndex] = optionIndex;
     });
     final q = widget.questions[_currentIndex];
-
-    final correctIndex = q['correctIndex'];
-
-    if (correctIndex is int) {
-      _isCorrect[_currentIndex] = (optionIndex == correctIndex);
-    }
-
+    final correctIndex = q.correctIndex;
+    _isCorrect[_currentIndex] = (optionIndex == correctIndex);
     widget.onAnswer?.call(q, optionIndex);
   }
 
@@ -78,8 +73,16 @@ class _QuestionPageState extends State<QuestionPage> {
   @override
   Widget build(BuildContext context) {
     final question = widget.questions[_currentIndex];
-
     final selected = _selectedAnswers[_currentIndex];
+    final List<String> displayOptions = List<String>.from(question.options);
+    if (displayOptions.length < 2) {
+      displayOptions.addAll(
+        List.generate(
+          2 - displayOptions.length,
+          (index) => 'Option ${displayOptions.length + index + 1}',
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: QuestionPage.beigeLight,
@@ -154,7 +157,7 @@ class _QuestionPageState extends State<QuestionPage> {
             decoration: BoxDecoration(
             ),
             child: Text(
-              question['text'] ?? 'No question text',
+              question.question,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 26,
@@ -171,21 +174,19 @@ class _QuestionPageState extends State<QuestionPage> {
 
                 const SizedBox(height: 48),
                 Expanded(
-                      child: TrueFalseOption(
-                        label: 'True',
-                        isSelected: selected == 0,
-                        isCorrect: selected == null
-                            ? null
-                            : (selected == 0
-                                ? _isCorrect[_currentIndex]
-                                : null),
-                        onTap: () => _selectAnswer(0),
-                      ),
-                    ),
+                  child: TrueFalseOption(
+                    label: displayOptions[0],
+                    isSelected: selected == 0,
+                    isCorrect: selected == null
+                        ? null
+                        : (selected == 0 ? _isCorrect[_currentIndex] : null),
+                    onTap: () => _selectAnswer(0),
+                  ),
+                ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: TrueFalseOption(
-                        label: 'False',
+                        label: displayOptions[1],
                         isSelected: selected == 1,
                         isCorrect: selected == null
                             ? null

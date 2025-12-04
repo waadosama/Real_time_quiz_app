@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:quiz_app/models/questions.dart';
 import 'package:quiz_app/wigets/quizes_cont.dart';
 import 'package:quiz_app/wigets/search_bar.dart';
 import 'package:quiz_app/screens/question_page.dart';
@@ -41,26 +42,22 @@ class _QuizesState extends State<Quizes> {
 
   @override
   Widget build(BuildContext context) {
-    // static questions used for demo navigation (declared here so it's in scope)
-    final sampleQuestions = <Map<String, dynamic>>[
-      {
-        'id': 'q1',
-        'text': 'What is the output of 1 + 1?',
-        'options': ['1', '2', '3', '4'],
-        'correctIndex': 1,
-      },
-      {
-        'id': 'q2',
-        'text': 'Which language is used to build Flutter apps?',
-        'options': ['Java', 'Kotlin', 'Dart', 'Swift'],
-        'correctIndex': 2,
-      },
-      {
-        'id': 'q3',
-        'text': 'Which widget is used for layout in Flutter?',
-        'options': ['Container', 'Row', 'Column', 'All of the above'],
-        'correctIndex': 3,
-      },
+    final sampleQuestionModels = <QuestionModel>[
+      QuestionModel(
+        question: 'What is the output of 1 + 1?',
+        options: const ['True', 'False'],
+        correctIndex: 1,
+      ),
+      QuestionModel(
+        question: 'Which language is used to build Flutter apps?',
+        options: const ['True', 'False'],
+        correctIndex: 0,
+      ),
+      QuestionModel(
+        question: 'Which widget is used for layout in Flutter?',
+        options: const ['True', 'False'],
+        correctIndex: 0,
+      ),
     ];
 
     return Scaffold(
@@ -120,7 +117,7 @@ class _QuizesState extends State<Quizes> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Search bar
+                      
                       ProfessionalSearchBar(
                         hintText: 'Search quizzes...',
                         mainGreen: mainGreen,
@@ -131,7 +128,6 @@ class _QuizesState extends State<Quizes> {
                         },
                       ),
                       const SizedBox(height: 28),
-                      // Available quizzes title
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -164,7 +160,7 @@ class _QuizesState extends State<Quizes> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      // Quizzes list
+                    
                       if (filteredQuizzes.isEmpty)
                         Center(
                           child: Padding(
@@ -192,7 +188,7 @@ class _QuizesState extends State<Quizes> {
                       else
                         ...filteredQuizzes.asMap().entries.map((entry) {
                           final quiz = entry.value;
-                          // parse duration minutes from strings like "30 min"
+                       
                           final durationMinutes = int.tryParse(
                                   quiz['duration']!.split(' ').first) ??
                               30;
@@ -208,7 +204,7 @@ class _QuizesState extends State<Quizes> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => QuestionPage(
-                                      questions: sampleQuestions,
+                                      questions: sampleQuestionModels,
                                       initialIndex: 0,
                                       durationMinutes: durationMinutes,
                                       onSubmit: () {

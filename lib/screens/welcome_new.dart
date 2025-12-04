@@ -153,10 +153,10 @@ class _WelcomePageState extends State<WelcomePage> {
                             TransparentCard(
                               title: 'Log In',
                               onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => const log_in()),
-  );
+  // // Navigator.push(
+  //   context,
+  //   MaterialPageRoute(builder: (context) => const log_in()),
+  // );
 },
                             ),
 
@@ -164,12 +164,12 @@ class _WelcomePageState extends State<WelcomePage> {
                             TransparentCard(
                               title: 'Register',
                             onTap: () {
-  Navigator.push(
-    context,
-    MaterialPageRoute(builder: (context) => const RegisterPage()),
-  );
+  // Navigator.push(
+  //   context,
+  //   MaterialPageRoute(builder: (context) => const RegisterPage()),
+  // );
 },
-                            ),
+                           ),
 
                             const SizedBox(height: 48),
                           ],

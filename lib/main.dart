@@ -8,6 +8,7 @@ import 'package:quiz_app/screens/regestir.dart';
 import 'package:quiz_app/screens/quizes.dart';
 import 'package:quiz_app/cubits/auth_cubit.dart';
 import 'package:quiz_app/services/storage_service.dart';
+import '../screens/question_page.dart';
 
 // void main() async {
 //   WidgetsFlutterBinding.ensureInitialized();
@@ -58,7 +59,7 @@ import 'package:quiz_app/services/storage_service.dart';
 // }
 
 void main() {
-  // We no longer need WidgetsFlutterBinding.ensureInitialized() or 
+  // We no longer need WidgetsFlutterBinding.ensureInitialized() or
   // SharedPreferences.getInstance() because no async initialization is happening.
   runApp(const MyApp());
 }
@@ -72,7 +73,7 @@ class MyApp extends StatelessWidget {
     // The entire application immediately starts and shows the WelcomePage
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: WelcomePage(), // Directly returns your WelcomePage
+      home: Quizes(), // Directly returns your WelcomePage
     );
   }
 }

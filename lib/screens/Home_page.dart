@@ -17,8 +17,8 @@
 //   String _getUserName() {
 //     final currentUser = FirebaseAuth.instance.currentUser;
 //     if (currentUser != null) {
-//       return currentUser.displayName ?? 
-//              currentUser.email?.split('@')[0] ?? 
+//       return currentUser.displayName ??
+//              currentUser.email?.split('@')[0] ??
 //              'User';
 //     }
 //     return 'Guest';
