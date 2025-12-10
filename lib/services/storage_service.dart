@@ -31,12 +31,12 @@ class StorageService {
     }
   }
 
-  // Check if user is logged in
+
   bool isLoggedIn() {
     return _prefs.getBool(_isLoggedInKey) ?? false;
   }
 
-  // Clear user data (logout)
+  
   Future<void> clearUser() async {
     try {
       await _prefs.remove(_userKey);

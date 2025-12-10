@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CustomTextField extends StatelessWidget {
+   Color mainGreen = Color(0xFF0D4726);
   CustomTextField({
     super.key,
     this.hintText,
