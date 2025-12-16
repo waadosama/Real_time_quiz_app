@@ -1,17 +1,30 @@
 part of 'quizzes_cubit.dart';
 
-abstract class QuizzesState {}
+enum QuizzesStatus { initial, loading, success, failure }
 
-class QuizzesInitial extends QuizzesState {}
+class QuizzesState extends Equatable {
+  const QuizzesState({
+    this.status = QuizzesStatus.initial,
+    this.quizzes = const <QuizModel>[],
+    this.errorMessage,
+  });
 
-class QuizzesLoading extends QuizzesState {}
+  final QuizzesStatus status;
+  final List<QuizModel> quizzes;
+  final String? errorMessage;
 
-class QuizzesLoaded extends QuizzesState {
-  final List<Map<String, dynamic>> quizzes;
-  QuizzesLoaded(this.quizzes);
-}
+  QuizzesState copyWith({
+    QuizzesStatus? status,
+    List<QuizModel>? quizzes,
+    String? errorMessage,
+  }) {
+    return QuizzesState(
+      status: status ?? this.status,
+      quizzes: quizzes ?? this.quizzes,
+      errorMessage: errorMessage,
+    );
+  }
 
-class QuizzesError extends QuizzesState {
-  final String message;
-  QuizzesError(this.message);
+  @override
+  List<Object?> get props => [status, quizzes, errorMessage];
 }

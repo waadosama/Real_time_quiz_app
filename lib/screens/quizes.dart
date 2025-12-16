@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:quiz_app/cubits/quizzes_cubit.dart';
 import 'package:quiz_app/models/questions.dart';
+import 'package:quiz_app/models/quiz.dart';
+import 'package:quiz_app/screens/question_page.dart';
 import 'package:quiz_app/wigets/quizes_cont.dart';
 import 'package:quiz_app/wigets/search_bar.dart';
-import 'package:quiz_app/screens/question_page.dart';
-import 'package:quiz_app/cubits/quizzes_cubit.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../firebase_messaging.dart'; // NotificationService
 
 class Quizes extends StatefulWidget {
   final String courseId;
@@ -20,43 +26,409 @@ class _QuizesState extends State<Quizes> {
 
   static const Color mainGreen = Color(0xFF0D4726);
   static const Color beigeLight = Color(0xFFFDF6EE);
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  List<Map<String, dynamic>> get filteredQuizzes {
-    final state = context.watch<QuizzesCubit>().state;
-    if (state is! QuizzesLoaded) return [];
+  List<QuizModel> _filterQuizzes(QuizzesState state) {
+    if (state.status != QuizzesStatus.success) return const [];
 
     final allQuizzes = state.quizzes;
-    if (_searchQuery.isEmpty) {
-      return allQuizzes;
-    }
+    if (_searchQuery.isEmpty) return allQuizzes;
+
     final query = _searchQuery.toLowerCase();
     return allQuizzes
         .where((quiz) =>
-            (quiz['name'] as String).toLowerCase().contains(query) ||
-            (quiz['date'] as String).toLowerCase().contains(query))
+            quiz.name.toLowerCase().contains(query) ||
+            (quiz.date?.toIso8601String() ?? '').toLowerCase().contains(query))
         .toList();
+  }
+
+  int _parseDurationMinutes(String duration) {
+    final parts = duration.split(' ');
+    final parsed = int.tryParse(parts.isNotEmpty ? parts.first : '');
+    return parsed ?? 30;
+  }
+
+  Future<void> _showAlert(String title, String message) async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<T?> _showLoading<T>() async {
+    if (!mounted) return null;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: mainGreen),
+      ),
+    );
+    return null;
+  }
+
+  Future<bool> _tryJoinQuiz(QuizModel quiz) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      await _showAlert('Login required', 'Please login to start the quiz.');
+      return false;
+    }
+
+    // Use shared top-level quizzes collection (same as professor app)
+    final quizRef = _firestore.collection('quizzes').doc(quiz.id);
+    final attemptRef = quizRef.collection('attempts').doc(user.uid);
+
+    final durationMinutes = _parseDurationMinutes(quiz.duration);
+    final staleAfter =
+        Duration(minutes: durationMinutes + 5); // small buffer after quiz time
+
+    try {
+      await _firestore.runTransaction((txn) async {
+        final attemptSnap = await txn.get(attemptRef);
+        if (attemptSnap.exists) {
+          // Any existing attempt counts, regardless of status
+          throw _JoinException(
+              'You have already attempted this quiz and cannot retake it.');
+        }
+
+        final quizSnap = await txn.get(quizRef);
+        // If quiz doc doesn't exist yet, create a minimal one so locking works
+        if (!quizSnap.exists) {
+          txn.set(
+            quizRef,
+            {
+              'id': quiz.id,
+              'courseId': widget.courseId,
+              'createdAt': Timestamp.now(),
+            },
+            SetOptions(merge: true),
+          );
+        }
+
+        final data = quizSnap.data() ?? {};
+        final currentParticipant = data['currentParticipant'] as String?;
+        final currentSince = data['currentParticipantSince'] as Timestamp?;
+        final now = Timestamp.now();
+
+        final isStale = currentParticipant != null &&
+            currentSince != null &&
+            now.millisecondsSinceEpoch - currentSince.millisecondsSinceEpoch >
+                staleAfter.inMilliseconds;
+
+        if (currentParticipant != null &&
+            currentParticipant != user.uid &&
+            !isStale) {
+          throw _JoinException(
+              'Another student is taking this quiz. Please wait.');
+        }
+
+        txn.set(
+          quizRef,
+          {
+            'currentParticipant': user.uid,
+            'currentParticipantSince': now,
+          },
+          SetOptions(merge: true),
+        );
+
+        txn.set(
+          attemptRef,
+          {
+            'status': 'in_progress',
+            'startedAt': now,
+          },
+          SetOptions(merge: true),
+        );
+      });
+      return true;
+    } on _JoinException catch (e) {
+      // Customize title based on message content
+      final msg = e.message;
+      final title = msg.contains('already attempted')
+          ? 'Attempt limit reached'
+          : 'Quiz busy';
+      await _showAlert(title, msg);
+      return false;
+    } catch (e) {
+      await _showAlert('Error', 'Failed to join quiz: $e');
+      return false;
+    }
+  }
+
+  Future<void> _releaseSlot({
+    required String quizId,
+    required bool markCompleted,
+    int? score,
+    required int totalQuestions,
+    required int durationMinutes,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Top-level quizzes collection
+    final quizRef = _firestore.collection('quizzes').doc(quizId);
+    final attemptRef = quizRef.collection('attempts').doc(user.uid);
+    final now = Timestamp.now();
+
+    // Fetch attempt start time and student name for accurate time + notification
+    DateTime startedAtDate =
+        now.toDate().subtract(Duration(minutes: durationMinutes));
+    try {
+      final attemptSnap = await attemptRef.get();
+      final startedAtTs = attemptSnap.data()?['startedAt'] as Timestamp?;
+      if (startedAtTs != null) {
+        startedAtDate = startedAtTs.toDate();
+      }
+    } catch (_) {
+      // fallback already set
+    }
+
+    String studentName = user.displayName ?? '';
+    try {
+      final studentDoc =
+          await _firestore.collection('users').doc(user.uid).get();
+      final data = studentDoc.data();
+      if (data != null) {
+        studentName = (data['name'] as String?) ??
+            (data['username'] as String?) ??
+            studentName;
+      }
+    } catch (_) {
+      // ignore
+    }
+    if (studentName.isEmpty) {
+      studentName = user.email ?? 'Student';
+    }
+
+    try {
+      await _firestore.runTransaction((txn) async {
+        final quizSnap = await txn.get(quizRef);
+        final currentParticipant =
+            quizSnap.data()?['currentParticipant'] as String?;
+
+        // Only clear if the same user holds the slot
+        if (currentParticipant == user.uid) {
+          txn.set(
+            quizRef,
+            {
+              'currentParticipant': null,
+              'currentParticipantSince': null,
+            },
+            SetOptions(merge: true),
+          );
+        }
+
+        final attemptData = <String, dynamic>{
+          'status': markCompleted ? 'completed' : 'abandoned',
+          'finishedAt': now,
+        };
+        if (score != null) attemptData['score'] = score;
+        txn.set(
+          attemptRef,
+          attemptData,
+          SetOptions(merge: true),
+        );
+      });
+
+      // Also write an entry to quiz_results collection so professor app
+      // dashboard & notifications can show scores.
+      if (markCompleted && score != null) {
+        final completedAt = now.toDate();
+        final timeTakenSeconds =
+            completedAt.difference(startedAtDate).inSeconds;
+        final quizResultId = '${user.uid}_$quizId';
+
+        await _firestore.collection('quiz_results').doc(quizResultId).set({
+          'id': quizResultId,
+          'studentId': user.uid,
+          'studentName': studentName,
+          'quizId': quizId,
+          'startedAt': startedAtDate.toIso8601String(),
+          'completedAt': completedAt.toIso8601String(),
+          'timeTaken': timeTakenSeconds,
+          'correctAnswers': score,
+          'totalQuestions': totalQuestions,
+          'score': score,
+        }, SetOptions(merge: true));
+
+        // After saving result, send push notification to professor app
+        try {
+          final notificationService = NotificationService();
+          final timeMinutes = timeTakenSeconds ~/ 60;
+          final timeSeconds = timeTakenSeconds % 60;
+          final timeText = timeMinutes > 0
+              ? '${timeMinutes}m ${timeSeconds}s'
+              : '${timeSeconds}s';
+          if (NotificationService.USE_API_MODE) {
+            await notificationService.sendNotificationViaAPI(
+              quizId: quizId,
+              studentId: user.uid,
+              studentName: studentName,
+              score: score,
+              totalQuestions: totalQuestions,
+              timeTakenSeconds: timeTakenSeconds,
+            );
+          } else {
+            await notificationService.sendNotificationToTopic(
+              topic: 'quiz_results',
+              title: 'Quiz finished by $studentName',
+              body: 'Score: $score/$totalQuestions | Time: $timeText',
+              data: {
+                'quizId': quizId,
+                'studentId': user.uid,
+                'studentName': studentName,
+                'score': score.toString(),
+                'totalQuestions': totalQuestions.toString(),
+                'timeTakenSeconds': timeTakenSeconds.toString(),
+              },
+            );
+          }
+        } catch (e) {
+          // Do not block UI if notification sending fails
+          // ignore: avoid_print
+          print('Error sending quiz result notification: $e');
+        }
+      }
+    } catch (_) {
+      // We intentionally swallow errors here to avoid blocking UI on exit.
+    }
+  }
+
+  Future<void> _updateAttemptProgress({
+    required String quizId,
+    required Map<int, int?> answers,
+    required int currentQuestionIndex,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final quizRef = _firestore.collection('quizzes').doc(quizId);
+    final attemptRef = quizRef.collection('attempts').doc(user.uid);
+
+    final answersPayload = <String, dynamic>{};
+    answers.forEach((key, value) {
+      answersPayload[key.toString()] = value;
+    });
+
+    try {
+      await attemptRef.set(
+        {
+          'currentQuestionIndex': currentQuestionIndex,
+          'answers': answersPayload,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (_) {
+      // Non-blocking: ignore failures to avoid interrupting quiz flow
+    }
+  }
+
+  Future<void> _handleQuizTap(QuizModel quiz) async {
+    await _showLoading();
+    final joined = await _tryJoinQuiz(quiz);
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
+    if (!joined) return;
+
+    final durationMinutes = _parseDurationMinutes(quiz.duration);
+
+    // Load questions from Firestore to display real content
+    final quizDoc = await _firestore.collection('quizzes').doc(quiz.id).get();
+    final data = quizDoc.data() ?? {};
+    final List<dynamic> rawQuestions =
+        (data['questions'] as List<dynamic>?) ?? [];
+    final questions = rawQuestions.map((q) {
+      final qm = q as Map<String, dynamic>? ?? {};
+      final text = (qm['questionText'] as String?) ?? 'Question';
+      final correctAnswer = qm['correctAnswer'] as bool? ?? true;
+      return QuestionModel(
+        question: text,
+        options: const ['True', 'False'],
+        correctIndex: correctAnswer ? 0 : 1,
+      );
+    }).toList();
+    final totalQuestions = questions.isNotEmpty
+        ? questions.length
+        : (quiz.questionsCount > 0 ? quiz.questionsCount : 1);
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuestionPage(
+          questions: questions.isNotEmpty
+              ? questions
+              : List<QuestionModel>.generate(
+                  totalQuestions,
+                  (index) => QuestionModel(
+                    question: 'Question ${index + 1}',
+                    options: const ['True', 'False'],
+                    correctIndex: 0,
+                  ),
+                ),
+          initialIndex: 0,
+          durationMinutes: durationMinutes,
+          onSubmitScore: (score) => _releaseSlot(
+            quizId: quiz.id,
+            markCompleted: true,
+            score: score,
+            totalQuestions: totalQuestions,
+            durationMinutes: durationMinutes,
+          ),
+          onSubmit: () async {
+            if (!mounted) return;
+            final showScore = quiz.showFinalScore;
+            final scoreText = 'Your score: \$score / ${quiz.questionsCount}';
+            await showDialog(
+              context: context,
+              builder: (_) => AlertDialog(
+                title: Text(showScore ? 'Quiz Finished' : 'Great work!'),
+                content: Text(
+                  showScore
+                      ? scoreText
+                      : 'You have completed the quiz successfully.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
+            if (mounted) {
+              Navigator.of(context).pop(); // Back to quizzes list
+            }
+          },
+          onExit: () => _releaseSlot(
+            quizId: quiz.id,
+            markCompleted: false,
+            score: 0,
+            totalQuestions: totalQuestions,
+            durationMinutes: durationMinutes,
+          ),
+          onAnswerProgress: (qIndex, selected, answers) =>
+              _updateAttemptProgress(
+            quizId: quiz.id,
+            answers: answers,
+            currentQuestionIndex: qIndex,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final sampleQuestionModels = <QuestionModel>[
-      QuestionModel(
-        question: 'What is the output of 1 + 1?',
-        options: const ['True', 'False'],
-        correctIndex: 1,
-      ),
-      QuestionModel(
-        question: 'Which language is used to build Flutter apps?',
-        options: const ['True', 'False'],
-        correctIndex: 0,
-      ),
-      QuestionModel(
-        question: 'Which widget is used for layout in Flutter?',
-        options: const ['True', 'False'],
-        correctIndex: 0,
-      ),
-    ];
-
     return BlocProvider(
       create: (context) => QuizzesCubit(courseId: widget.courseId),
       child: Scaffold(
@@ -139,9 +511,8 @@ class _QuizesState extends State<Quizes> {
                             ),
                             BlocBuilder<QuizzesCubit, QuizzesState>(
                               builder: (context, state) {
-                                final count = state is QuizzesLoaded
-                                    ? filteredQuizzes.length
-                                    : 0;
+                                final filtered = _filterQuizzes(state);
+                                final count = filtered.length;
                                 return Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
@@ -167,8 +538,8 @@ class _QuizesState extends State<Quizes> {
                         const SizedBox(height: 20),
                         BlocBuilder<QuizzesCubit, QuizzesState>(
                           builder: (context, state) {
-                            // Loading State
-                            if (state is QuizzesLoading) {
+                            if (state.status == QuizzesStatus.loading ||
+                                state.status == QuizzesStatus.initial) {
                               return const Center(
                                 child: Padding(
                                   padding: EdgeInsets.all(32.0),
@@ -179,8 +550,7 @@ class _QuizesState extends State<Quizes> {
                               );
                             }
 
-                            // Error State
-                            if (state is QuizzesError) {
+                            if (state.status == QuizzesStatus.failure) {
                               return Center(
                                 child: Padding(
                                   padding: const EdgeInsets.all(32.0),
@@ -193,7 +563,8 @@ class _QuizesState extends State<Quizes> {
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
-                                        state.message,
+                                        state.errorMessage ??
+                                            'Failed to load quizzes',
                                         style: const TextStyle(
                                           color: Colors.red,
                                           fontSize: 16,
@@ -224,9 +595,9 @@ class _QuizesState extends State<Quizes> {
                               );
                             }
 
-                            // Loaded State
-                            if (state is QuizzesLoaded) {
-                              if (filteredQuizzes.isEmpty) {
+                            if (state.status == QuizzesStatus.success) {
+                              final filtered = _filterQuizzes(state);
+                              if (filtered.isEmpty) {
                                 return Center(
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -256,57 +627,20 @@ class _QuizesState extends State<Quizes> {
                               }
 
                               return Column(
-                                children: filteredQuizzes
-                                    .asMap()
-                                    .entries
-                                    .map((entry) {
-                                  final quiz = entry.value;
-
-                                  final durationMinutes = int.tryParse(
-                                          (quiz['duration'] as String)
-                                              .split(' ')
-                                              .first) ??
-                                      30;
+                                children: filtered.map((quiz) {
+                                  final dateString = quiz.date != null
+                                      ? DateFormat('dd MMM yyyy')
+                                          .format(quiz.date!)
+                                      : '';
 
                                   return Padding(
                                     padding: const EdgeInsets.only(bottom: 16),
                                     child: quizes_cont(
-                                      name: quiz['name'] as String,
-                                      date: quiz['date'] as String,
-                                      duration: quiz['duration'] as String,
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => QuestionPage(
-                                              questions: sampleQuestionModels,
-                                              initialIndex: 0,
-                                              durationMinutes: durationMinutes,
-                                              onSubmit: () {
-                                                // simple submission flow: show a dialog
-                                                showDialog(
-                                                  context: context,
-                                                  builder: (_) => AlertDialog(
-                                                    title: const Text(
-                                                        'Quiz submitted'),
-                                                    content: const Text(
-                                                        'Your answers have been recorded (demo).'),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.of(
-                                                                    context)
-                                                                .pop(),
-                                                        child: const Text('OK'),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        );
-                                      },
+                                      name: quiz.name,
+                                      date: dateString,
+                                      duration: quiz.duration,
+                                      questionsCount: quiz.questionsCount,
+                                      onTap: () => _handleQuizTap(quiz),
                                     ),
                                   );
                                 }).toList(),
@@ -328,4 +662,9 @@ class _QuizesState extends State<Quizes> {
       ),
     );
   }
+}
+
+class _JoinException implements Exception {
+  final String message;
+  _JoinException(this.message);
 }

@@ -1,17 +1,30 @@
 part of 'courses_cubit.dart';
 
-abstract class CoursesState {}
+enum CoursesStatus { initial, loading, success, failure }
 
-class CoursesInitial extends CoursesState {}
+class CoursesState extends Equatable {
+  const CoursesState({
+    this.status = CoursesStatus.initial,
+    this.courses = const <CourseModel>[],
+    this.errorMessage,
+  });
 
-class CoursesLoading extends CoursesState {}
+  final CoursesStatus status;
+  final List<CourseModel> courses;
+  final String? errorMessage;
 
-class CoursesLoaded extends CoursesState {
-  final List<Map<String, dynamic>> courses;
-  CoursesLoaded(this.courses);
-}
+  CoursesState copyWith({
+    CoursesStatus? status,
+    List<CourseModel>? courses,
+    String? errorMessage,
+  }) {
+    return CoursesState(
+      status: status ?? this.status,
+      courses: courses ?? this.courses,
+      errorMessage: errorMessage,
+    );
+  }
 
-class CoursesError extends CoursesState {
-  final String message;
-  CoursesError(this.message);
+  @override
+  List<Object?> get props => [status, courses, errorMessage];
 }

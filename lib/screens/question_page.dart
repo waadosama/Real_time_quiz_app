@@ -13,8 +13,14 @@ class QuestionPage extends StatefulWidget {
   final int initialIndex;
   final int durationMinutes;
   final void Function(QuestionModel question, int selectedIndex)? onAnswer;
-
+  final ValueChanged<int>? onSubmitScore;
   final VoidCallback? onSubmit;
+  final VoidCallback? onExit;
+  final void Function(
+    int questionIndex,
+    int selectedIndex,
+    Map<int, int?> answers,
+  )? onAnswerProgress;
 
   const QuestionPage({
     super.key,
@@ -23,6 +29,9 @@ class QuestionPage extends StatefulWidget {
     this.durationMinutes = 30,
     this.onAnswer,
     this.onSubmit,
+    this.onSubmitScore,
+    this.onExit,
+    this.onAnswerProgress,
   });
 
   @override
@@ -51,14 +60,26 @@ class _QuestionPageState extends State<QuestionPage> {
     final correctIndex = q.correctIndex;
     _isCorrect[_currentIndex] = (optionIndex == correctIndex);
     widget.onAnswer?.call(q, optionIndex);
+    widget.onAnswerProgress
+        ?.call(_currentIndex, optionIndex, Map.from(_selectedAnswers));
+  }
+
+  int _calculateScore() {
+    // Each correct answer counts as 1 point
+    return _isCorrect.values.where((v) => v == true).length;
+  }
+
+  void _handleSubmit() {
+    final score = _calculateScore();
+    widget.onSubmitScore?.call(score);
+    widget.onSubmit?.call();
   }
 
   void _goNext() {
     if (_currentIndex < widget.questions.length - 1) {
       setState(() => _currentIndex++);
     } else {
-
-      widget.onSubmit?.call();
+      _handleSubmit();
     }
   }
 
@@ -67,7 +88,14 @@ class _QuestionPageState extends State<QuestionPage> {
   }
 
   void _onTimeUp() {
-    widget.onSubmit?.call();
+    _handleSubmit();
+  }
+
+  Future<bool> _handleExit() async {
+    // Treat manual exit as abandoning attempt
+    widget.onExit?.call();
+    Navigator.pop(context);
+    return false;
   }
 
   @override
@@ -84,160 +112,155 @@ class _QuestionPageState extends State<QuestionPage> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: QuestionPage.beigeLight,
-      appBar: PreferredSize(
-        preferredSize:
-            const Size.fromHeight(100.0),
-        child: SafeArea(
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-            decoration: BoxDecoration(
-              color: QuestionPage.beigeLight,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: QuestionPage.mainGreen.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+    return WillPopScope(
+      onWillPop: _handleExit,
+      child: Scaffold(
+        backgroundColor: QuestionPage.beigeLight,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(100.0),
+          child: SafeArea(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              decoration: BoxDecoration(
+                color: QuestionPage.beigeLight,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _handleExit,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: QuestionPage.mainGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: QuestionPage.mainGreen, size: 24),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: QuestionPage.mainGreen, size: 24),
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    const Text(
-                      'Question',
-                      style: TextStyle(
-                        color: QuestionPage.mainGreen,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                      const SizedBox(width: 16),
+                      const Text(
+                        'Question',
+                        style: TextStyle(
+                          color: QuestionPage.mainGreen,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-
-                QuizTimer(
-                  compact: true,
-                  durationMinutes: widget.durationMinutes,
-                  onTimeUp: _onTimeUp,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-
-     body: SafeArea(
-  child: Center(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-            ),
-            child: Text(
-              question.question,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0D4726),
+                    ],
+                  ),
+                  QuizTimer(
+                    compact: true,
+                    durationMinutes: widget.durationMinutes,
+                    onTimeUp: _onTimeUp,
+                  ),
+                ],
               ),
             ),
           ),
-
-          const Spacer(), 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-
-                const SizedBox(height: 48),
-                Expanded(
-                  child: TrueFalseOption(
-                    label: displayOptions[0],
-                    isSelected: selected == 0,
-                    isCorrect: selected == null
-                        ? null
-                        : (selected == 0 ? _isCorrect[_currentIndex] : null),
-                    onTap: () => _selectAnswer(0),
-                  ),
-                ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TrueFalseOption(
-                        label: displayOptions[1],
-                        isSelected: selected == 1,
-                        isCorrect: selected == null
-                            ? null
-                            : (selected == 1
-                                ? _isCorrect[_currentIndex]
-                                : null),
-                        onTap: () => _selectAnswer(1),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: const BoxDecoration(),
+                    child: Text(
+                      question.question,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0D4726),
                       ),
                     ),
-                  ],
-                ),
-
-                const Spacer(),
-                Row(
-                  children: [
-
-                    if (_currentIndex > 0)
+                  ),
+                  const Spacer(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      const SizedBox(height: 48),
+                      Expanded(
+                        child: TrueFalseOption(
+                          label: displayOptions[0],
+                          isSelected: selected == 0,
+                          isCorrect: selected == null
+                              ? null
+                              : (selected == 0
+                                  ? _isCorrect[_currentIndex]
+                                  : null),
+                          onTap: () => _selectAnswer(0),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TrueFalseOption(
+                          label: displayOptions[1],
+                          isSelected: selected == 1,
+                          isCorrect: selected == null
+                              ? null
+                              : (selected == 1
+                                  ? _isCorrect[_currentIndex]
+                                  : null),
+                          onTap: () => _selectAnswer(1),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      if (_currentIndex > 0)
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _goPrev,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade300,
+                              foregroundColor: const Color(0xFF0D4726),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text('Previous'),
+                          ),
+                        ),
+                      if (_currentIndex > 0) const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _goPrev,
+                          onPressed: selected != null ? _goNext : null,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade300,
-                            foregroundColor: const Color(0xFF0D4726),
+                            backgroundColor: const Color(0xFF0D4726),
+                            foregroundColor:
+                                _currentIndex < widget.questions.length - 1
+                                    ? const Color(0xFFF5E6D3)
+                                    : Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
-                          child: const Text('Previous'),
+                          child: Text(
+                            _currentIndex < widget.questions.length - 1
+                                ? 'Next'
+                                : 'Submit',
+                          ),
                         ),
                       ),
-
-                    if (_currentIndex > 0) const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: selected != null ? _goNext : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0D4726),
-                          foregroundColor:
-                              _currentIndex < widget.questions.length - 1
-                                  ? const Color(0xFFF5E6D3)
-                                  : Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: Text(
-                          _currentIndex < widget.questions.length - 1
-                              ? 'Next'
-                              : 'Submit',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

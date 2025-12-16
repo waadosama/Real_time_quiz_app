@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../models/quiz.dart';
 
 part 'quizzes_state.dart';
 
@@ -13,79 +15,55 @@ class QuizzesCubit extends Cubit<QuizzesState> {
     required this.courseId,
     FirebaseFirestore? firestore,
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        super(QuizzesInitial()) {
+        super(const QuizzesState()) {
     _startListening();
   }
 
-  /// Start listening to quizzes collection in real-time for a specific course
   void _startListening() {
-    emit(QuizzesLoading());
+    emit(state.copyWith(status: QuizzesStatus.loading));
 
     _quizzesSubscription?.cancel();
     _quizzesSubscription = _firestore
-        .collection('courses')
-        .doc(courseId)
         .collection('quizzes')
+        .where('courseId', isEqualTo: courseId)
         .snapshots()
         .listen(
       (snapshot) {
         try {
-          final quizzes = snapshot.docs.map((doc) {
-            final data = doc.data();
-            return {
-              'id': doc.id,
-              'name': data['name'] ?? 'Unnamed Quiz',
-              'date': data['date'] ?? '',
-              'duration': data['duration'] ?? '30 min',
-              'description': data['description'] ?? '',
-            };
-          }).toList();
+          final quizzes = snapshot.docs
+              .map((doc) => QuizModel.fromJson(doc.data(), id: doc.id))
+              .toList()
+            ..sort((a, b) => a.name.compareTo(b.name));
 
-          // Sort by name locally
-          quizzes.sort(
-              (a, b) => (a['name'] as String).compareTo(b['name'] as String));
-
-          emit(QuizzesLoaded(quizzes));
+          emit(
+            state.copyWith(
+              status: QuizzesStatus.success,
+              quizzes: quizzes,
+              errorMessage: null,
+            ),
+          );
         } catch (e) {
-          emit(QuizzesError('Failed to load quizzes: $e'));
+          emit(
+            state.copyWith(
+              status: QuizzesStatus.failure,
+              errorMessage: 'Failed to load quizzes: $e',
+            ),
+          );
         }
       },
       onError: (error) {
-        emit(QuizzesError('Error listening to quizzes: $error'));
+        emit(
+          state.copyWith(
+            status: QuizzesStatus.failure,
+            errorMessage: 'Error listening to quizzes: $error',
+          ),
+        );
       },
     );
   }
 
-  /// Manually refresh quizzes (reconnects the listener)
   Future<void> refreshQuizzes() async {
     _startListening();
-  }
-
-  /// Load quizzes once (non-realtime, for backward compatibility)
-  Future<void> loadQuizzes() async {
-    emit(QuizzesLoading());
-    try {
-      final snapshot = await _firestore
-          .collection('courses')
-          .doc(courseId)
-          .collection('quizzes')
-          .get();
-
-      final quizzes = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          'name': data['name'] ?? 'Unnamed Quiz',
-          'date': data['date'] ?? '',
-          'duration': data['duration'] ?? '30 min',
-          'description': data['description'] ?? '',
-        };
-      }).toList();
-
-      emit(QuizzesLoaded(quizzes));
-    } catch (e) {
-      emit(QuizzesError('Failed to load quizzes: $e'));
-    }
   }
 
   @override

@@ -210,8 +210,8 @@ class HomePage extends StatelessWidget {
                     },
                     child: BlocBuilder<CoursesCubit, CoursesState>(
                       builder: (context, state) {
-                        // Loading State
-                        if (state is CoursesLoading) {
+                        if (state.status == CoursesStatus.loading ||
+                            state.status == CoursesStatus.initial) {
                           return const Center(
                             child: Padding(
                               padding: EdgeInsets.all(32.0),
@@ -223,7 +223,7 @@ class HomePage extends StatelessWidget {
                         }
 
                         // Error State
-                        if (state is CoursesError) {
+                        if (state.status == CoursesStatus.failure) {
                           return Center(
                             child: Padding(
                               padding: const EdgeInsets.all(32.0),
@@ -236,7 +236,8 @@ class HomePage extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 16),
                                   Text(
-                                    state.message,
+                                    state.errorMessage ??
+                                        'Failed to load courses',
                                     style: const TextStyle(
                                       color: Colors.red,
                                       fontSize: 16,
@@ -248,7 +249,7 @@ class HomePage extends StatelessWidget {
                                     onPressed: () {
                                       context
                                           .read<CoursesCubit>()
-                                          .loadCourses();
+                                          .refreshCourses();
                                     },
                                     icon: const Icon(Icons.refresh),
                                     label: const Text('Retry'),
@@ -267,9 +268,7 @@ class HomePage extends StatelessWidget {
                           );
                         }
 
-                        // Loaded State
-                        if (state is CoursesLoaded) {
-                          // Empty courses
+                        if (state.status == CoursesStatus.success) {
                           if (state.courses.isEmpty) {
                             return Center(
                               child: Padding(
@@ -303,7 +302,7 @@ class HomePage extends StatelessWidget {
                                       onPressed: () {
                                         context
                                             .read<CoursesCubit>()
-                                            .loadCourses();
+                                            .refreshCourses();
                                       },
                                       icon: const Icon(Icons.refresh),
                                       label: const Text('Refresh'),
@@ -317,7 +316,6 @@ class HomePage extends StatelessWidget {
                             );
                           }
 
-                          // Display courses grid
                           return GridView.builder(
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
@@ -332,15 +330,15 @@ class HomePage extends StatelessWidget {
                             itemBuilder: (context, index) {
                               final course = state.courses[index];
                               return CourseCard(
-                                text: course['name'] as String,
-                                imagePath: course['imagePath'] as String?,
-                                imageBase64: course['imageBase64'] as String?,
+                                text: course.name,
+                                imagePath: course.imagePath,
+                                imageBase64: course.imageBase64,
                                 onTap: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => Quizes(
-                                          courseId: course['id'] as String),
+                                          courseId: course.id),
                                     ),
                                   );
                                 },
