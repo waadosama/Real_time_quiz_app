@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class CustomTextField extends StatelessWidget {
-   Color mainGreen = Color(0xFF0D4726);
+  Color mainGreen = const Color(0xFF0D4726);
+
   CustomTextField({
     super.key,
     this.hintText,
@@ -9,6 +10,7 @@ class CustomTextField extends StatelessWidget {
     this.obscureText = false,
     this.prefixIcon,
     this.controller,
+    this.suffixIcon,
   });
 
   final String? hintText;
@@ -16,6 +18,7 @@ class CustomTextField extends StatelessWidget {
   final bool obscureText;
   final IconData? prefixIcon;
   final TextEditingController? controller;
+  final Widget? suffixIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -25,12 +28,16 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       decoration: InputDecoration(
         hintText: hintText,
+
         prefixIcon: prefixIcon == null
             ? null
             : Icon(
                 prefixIcon,
                 color: const Color(0xFF7A8564),
               ),
+
+        suffixIcon: suffixIcon,
+
         filled: true,
         fillColor: const Color(0xFFE0D7C4),
         border: OutlineInputBorder(

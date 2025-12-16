@@ -14,7 +14,7 @@ class QuizModel {
     required this.id,
     required this.name,
     this.date,
-    this.duration = '30 min',
+    this.duration = '10 min',
     this.description,
     this.questionsCount = 0,
     this.showFinalScore = true,

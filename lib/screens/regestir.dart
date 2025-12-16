@@ -20,6 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   late TextEditingController ageController;
   late TextEditingController passwordController;
   late TextEditingController confirmPasswordController;
+  bool _isPasswordHidden = true;
 
   static const Color mainGreen = Color(0xFF0D4726);
   static const Color accentGreen = Color(0xFF1E6B3C);
@@ -153,12 +154,31 @@ class _RegisterPageState extends State<RegisterPage> {
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 16),
-                    CustomTextField(
-                      controller: passwordController,
-                      hintText: 'Password',
-                      prefixIcon: Icons.lock_outline,
-                      obscureText: true,
-                    ),
+                    // CustomTextField(
+                    //   controller: passwordController,
+                    //   hintText: 'Password',
+                    //   prefixIcon: Icons.lock_outline,
+                    //   obscureText: true,
+                    // )
+                      CustomTextField(
+  controller: passwordController,
+  hintText: 'Password',
+  prefixIcon: Icons.lock_outline,
+  obscureText: _isPasswordHidden,
+  suffixIcon: IconButton(
+    icon: Icon(
+      _isPasswordHidden
+          ? Icons.visibility_off
+          : Icons.visibility,
+      color: const Color(0xFF7A8564),
+    ),
+    onPressed: () {
+      setState(() {
+        _isPasswordHidden = !_isPasswordHidden;
+      });
+    },
+  ),
+),
                     const SizedBox(height: 8),
                     const Text(
                       'Use at least 8 characters, including a number.',

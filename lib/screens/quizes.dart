@@ -34,12 +34,47 @@ class _QuizesState extends State<Quizes> {
     final allQuizzes = state.quizzes;
     if (_searchQuery.isEmpty) return allQuizzes;
 
-    final query = _searchQuery.toLowerCase();
-    return allQuizzes
-        .where((quiz) =>
-            quiz.name.toLowerCase().contains(query) ||
-            (quiz.date?.toIso8601String() ?? '').toLowerCase().contains(query))
-        .toList();
+    final query = _searchQuery.toLowerCase().trim();
+
+    return allQuizzes.where((quiz) {
+      // Search in quiz name
+      if (quiz.name.toLowerCase().contains(query)) return true;
+
+      // Search in date - format date in multiple ways for better matching
+      if (quiz.date != null) {
+        final date = quiz.date!;
+        final day = date.day.toString();
+        final month = date.month.toString();
+        final year = date.year.toString();
+        final monthName = DateFormat('MMM').format(date).toLowerCase(); // "dec"
+        final monthFullName =
+            DateFormat('MMMM').format(date).toLowerCase(); // "december"
+        final dateString = DateFormat('dd MMM yyyy')
+            .format(date)
+            .toLowerCase(); // "12 dec 2024"
+        final dateShort = DateFormat('dd/MM/yyyy').format(date); // "12/12/2024"
+        final dateIso = date.toIso8601String().toLowerCase();
+
+        if (day.contains(query) ||
+            month.contains(query) ||
+            year.contains(query) ||
+            monthName.contains(query) ||
+            monthFullName.contains(query) ||
+            dateString.contains(query) ||
+            dateShort.contains(query) ||
+            dateIso.contains(query)) {
+          return true;
+        }
+      }
+
+      // Search in question count (e.g., "12" matches quizzes with 12 questions)
+      if (quiz.questionsCount.toString().contains(query)) return true;
+
+      // Search in duration (e.g., "30" matches "30 min")
+      if (quiz.duration.toLowerCase().contains(query)) return true;
+
+      return false;
+    }).toList();
   }
 
   int _parseDurationMinutes(String duration) {
