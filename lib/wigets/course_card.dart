@@ -8,7 +8,7 @@ class CourseCard extends StatelessWidget {
   final String? imageBase64;
   final IconData? icon;
   final VoidCallback? onTap;
-  final Color mainGreen;
+ static const Color mainGreen = Color(0xFF0D4726);
   final Color tileFill;
 
   const CourseCard({
@@ -18,7 +18,8 @@ class CourseCard extends StatelessWidget {
     this.imageBase64,
     this.icon,
     this.onTap,
-    this.mainGreen = const Color(0xFF0D4726),
+
+   // this.mainGreen = const Color(0xFF0D4726),
     this.tileFill = const Color(0xFFF2E6D1),
   });
 
@@ -96,8 +97,8 @@ class CourseCard extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 12),
           child: Image.memory(
             imageBytes,
-            height: 50,
-            width: 50,
+            height: 56,
+            // width: 50,
             fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => Icon(
               Icons.broken_image,
@@ -150,29 +151,71 @@ class CourseCard extends StatelessWidget {
   }
 
   @override
+//   Widget build(BuildContext context) {
+//     return GestureDetector(
+//       onTap: onTap,
+//       child: Card(
+//         elevation: 8,
+//         shape: RoundedRectangleBorder(
+//           borderRadius: BorderRadius.circular(24),
+//         ),
+//         color: tileFill,
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             _buildImage(),
+//             Text(
+//               text,
+//               textAlign: TextAlign.center,
+//               style: TextStyle(
+//                 fontSize: 18,
+//                 fontWeight: FontWeight.w600,
+//                 color: mainGreen,
+//               ),
+//               maxLines: 2,
+//               overflow: TextOverflow.ellipsis,
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Card(
-        elevation: 6,
+        elevation: 8,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
         ),
-        color: tileFill,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildImage(),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: mainGreen,
+            Expanded(
+              flex: 3,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                child:  _buildImage(),
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            ),
+            SizedBox(
+              height: 56,
+              child: Center(
+                child: Text(
+                 text,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: mainGreen,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
           ],
         ),

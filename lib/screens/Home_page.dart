@@ -56,11 +56,7 @@ class HomePage extends StatelessWidget {
         body: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [beigeLight, beigeDark],
-            ),
+             color: beigeLight,
           ),
           child: SafeArea(
             child: SingleChildScrollView(

@@ -16,6 +16,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   late TextEditingController emailController;
   late TextEditingController passwordController;
+  bool _isPasswordHidden = true;
 
   static const Color mainGreen = Color(0xFF0D4726);
   static const Color accentGreen = Color(0xFF1E6B3C);
@@ -98,12 +99,31 @@ class _LoginPageState extends State<LoginPage> {
                       keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 16),
+                    // CustomTextField(
+                    //   controller: passwordController,
+                    //   hintText: 'Password',
+                    //   prefixIcon: Icons.lock_outline,
+                    //   obscureText: true,
+                    // ),
                     CustomTextField(
-                      controller: passwordController,
-                      hintText: 'Password',
-                      prefixIcon: Icons.lock_outline,
-                      obscureText: true,
-                    ),
+  controller: passwordController,
+  hintText: 'Password',
+  prefixIcon: Icons.lock_outline,
+  obscureText: _isPasswordHidden,
+  suffixIcon: IconButton(
+    icon: Icon(
+      _isPasswordHidden
+          ? Icons.visibility_off
+          : Icons.visibility,
+      color: const Color(0xFF7A8564),
+    ),
+    onPressed: () {
+      setState(() {
+        _isPasswordHidden = !_isPasswordHidden;
+      });
+    },
+  ),
+),
                     const SizedBox(height: 12),
                     Align(
                       alignment: Alignment.centerRight,
