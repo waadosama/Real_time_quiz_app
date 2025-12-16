@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../wigets/butom.dart';
 import '../wigets/floating.dart';
+import 'log_in.dart';
+import 'regestir.dart';
+import '../cubits/auth_cubit.dart';
+import 'Home_page.dart' show HomePage;
 
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
@@ -36,10 +41,8 @@ class _WelcomePageState extends State<WelcomePage> {
     });
   }
 
- 
   void _startAnimationSequence() {
     final totalLetterAppearanceTime = _letterDelayMs * _titleText.length;
-
 
     for (int i = 0; i < _titleText.length; i++) {
       Future.delayed(Duration(milliseconds: _letterDelayMs * i), () {
@@ -51,7 +54,6 @@ class _WelcomePageState extends State<WelcomePage> {
       });
     }
 
-
     final fadeOutStartTime = totalLetterAppearanceTime + _titleHoldDelayMs;
     Future.delayed(Duration(milliseconds: fadeOutStartTime), () {
       if (mounted) {
@@ -61,8 +63,7 @@ class _WelcomePageState extends State<WelcomePage> {
       }
     });
 
-    final contentInStartTime =
-        fadeOutStartTime + _titleFadeOutDurationMs;
+    final contentInStartTime = fadeOutStartTime + _titleFadeOutDurationMs;
     Future.delayed(Duration(milliseconds: contentInStartTime), () {
       if (mounted) {
         setState(() {
@@ -88,7 +89,6 @@ class _WelcomePageState extends State<WelcomePage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -102,11 +102,10 @@ class _WelcomePageState extends State<WelcomePage> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                
                 AnimatedOpacity(
                   opacity: _titleGroupVisible ? 1.0 : 0.0,
-                  duration: const Duration(
-                      milliseconds: _titleFadeOutDurationMs),
+                  duration:
+                      const Duration(milliseconds: _titleFadeOutDurationMs),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
@@ -123,7 +122,8 @@ class _WelcomePageState extends State<WelcomePage> {
                 // -----------------------
                 AnimatedOpacity(
                   opacity: _contentVisible ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: _contentFadeInDurationMs),
+                  duration:
+                      const Duration(milliseconds: _contentFadeInDurationMs),
                   child: _contentVisible
                       ? Column(
                           children: [
@@ -137,9 +137,7 @@ class _WelcomePageState extends State<WelcomePage> {
                                 child: FloatingImage(),
                               ),
                             ),
-
                             const SizedBox(height: 10),
-
                             const Text(
                               'Welcome',
                               style: TextStyle(
@@ -148,29 +146,76 @@ class _WelcomePageState extends State<WelcomePage> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-
                             const SizedBox(height: 50),
-                            TransparentCard(
-                              title: 'Log In',
-                              onTap: () {
-  // // Navigator.push(
-  //   context,
-  //   MaterialPageRoute(builder: (context) => const log_in()),
-  // );
-},
+                            BlocBuilder<AuthCubit, AuthState>(
+                              builder: (context, state) {
+                                if (state is AuthAuthenticated) {
+                                  // Show welcome message for authenticated users
+                                  return Column(
+                                    children: [
+                                      Text(
+                                        'Welcome back, ${state.user.username}!',
+                                        style: const TextStyle(
+                                          color: WelcomePage.mainGreen,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 30),
+                                      TransparentCard(
+                                        title: 'Get Started',
+                                        onTap: () {
+                                          // You can navigate to HomePage or other screen here
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const HomePage()),
+                                          );
+                                          // For now, just show a message
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                  'Welcome! Ready to start your quiz journey.'),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                } else {
+                                  // Show login/register for unauthenticated users
+                                  return Column(
+                                    children: [
+                                      TransparentCard(
+                                        title: 'Log In',
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const LoginPage()),
+                                          );
+                                        },
+                                      ),
+                                      const SizedBox(height: 14),
+                                      TransparentCard(
+                                        title: 'Register',
+                                        onTap: () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const RegisterPage()),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  );
+                                }
+                              },
                             ),
-
-                            const SizedBox(height: 14),
-                            TransparentCard(
-                              title: 'Register',
-                            onTap: () {
-  // Navigator.push(
-  //   context,
-  //   MaterialPageRoute(builder: (context) => const RegisterPage()),
-  // );
-},
-                           ),
-
                             const SizedBox(height: 48),
                           ],
                         )

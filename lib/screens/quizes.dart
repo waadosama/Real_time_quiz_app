@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:quiz_app/models/questions.dart';
 import 'package:quiz_app/wigets/quizes_cont.dart';
 import 'package:quiz_app/wigets/search_bar.dart';
 import 'package:quiz_app/screens/question_page.dart';
+import 'package:quiz_app/cubits/quizzes_cubit.dart';
 
 class Quizes extends StatefulWidget {
-  const Quizes({super.key});
+  final String courseId;
+
+  const Quizes({super.key, required this.courseId});
 
   @override
   State<Quizes> createState() => _QuizesState();
@@ -15,28 +19,21 @@ class _QuizesState extends State<Quizes> {
   String _searchQuery = '';
 
   static const Color mainGreen = Color(0xFF0D4726);
-  static const Color accentGreen = Color(0xFF1E6B3C);
   static const Color beigeLight = Color(0xFFFDF6EE);
-  static const Color beigeDark = Color(0xFFF3DEC4);
 
-  final List<Map<String, String>> allQuizzes = [
-    {"name": "Flutter Basics", "date": "20/8", "duration": "5 min"},
-    {"name": "Data structure", "date": "20/9", "duration": "20 min"},
-    {"name": "Ai", "date": "13/7", "duration": "10 min"},
-    {"name": "Infromtion system", "date": "13/7", "duration": "10 min"},
-    {"name": "Creative", "date": "13/7", "duration": "10 min"},
-    {"name": "Data base 2", "date": "13/7", "duration": "50 min"},
-  ];
+  List<Map<String, dynamic>> get filteredQuizzes {
+    final state = context.watch<QuizzesCubit>().state;
+    if (state is! QuizzesLoaded) return [];
 
-  List<Map<String, String>> get filteredQuizzes {
+    final allQuizzes = state.quizzes;
     if (_searchQuery.isEmpty) {
       return allQuizzes;
     }
     final query = _searchQuery.toLowerCase();
     return allQuizzes
         .where((quiz) =>
-            quiz['name']!.toLowerCase().contains(query) ||
-            quiz['date']!.toLowerCase().contains(query))
+            (quiz['name'] as String).toLowerCase().contains(query) ||
+            (quiz['date'] as String).toLowerCase().contains(query))
         .toList();
   }
 
@@ -60,184 +57,273 @@ class _QuizesState extends State<Quizes> {
       ),
     ];
 
-    return Scaffold(
-      backgroundColor: beigeLight,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header with shadow and better spacing
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-              decoration: BoxDecoration(
-                color: beigeLight,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: mainGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded,
-                          color: mainGreen, size: 24),
+    return BlocProvider(
+      create: (context) => QuizzesCubit(courseId: widget.courseId),
+      child: Scaffold(
+        backgroundColor: beigeLight,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header with shadow and better spacing
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                decoration: BoxDecoration(
+                  color: beigeLight,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Quizzes',
-                      style: TextStyle(
-                        color: mainGreen,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: mainGreen.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded,
+                            color: mainGreen, size: 24),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            // Content area
-            Expanded(
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 450),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      
-                      ProfessionalSearchBar(
-                        hintText: 'Search quizzes...',
-                        mainGreen: mainGreen,
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Quizzes',
+                        style: TextStyle(
+                          color: mainGreen,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                      const SizedBox(height: 28),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Available Quizzes",
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: mainGreen,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: mainGreen.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${filteredQuizzes.length}',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                    ),
+                  ],
+                ),
+              ),
+              // Content area
+              Expanded(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 450),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ProfessionalSearchBar(
+                          hintText: 'Search quizzes...',
+                          mainGreen: mainGreen,
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 28),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Available Quizzes",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
                                 color: mainGreen,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                    
-                      if (filteredQuizzes.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.search_off,
-                                  size: 48,
-                                  color: mainGreen.withOpacity(0.3),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'No quizzes found',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: mainGreen,
-                                    fontWeight: FontWeight.w500,
+                            BlocBuilder<QuizzesCubit, QuizzesState>(
+                              builder: (context, state) {
+                                final count = state is QuizzesLoaded
+                                    ? filteredQuizzes.length
+                                    : 0;
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        ...filteredQuizzes.asMap().entries.map((entry) {
-                          final quiz = entry.value;
-                       
-                          final durationMinutes = int.tryParse(
-                                  quiz['duration']!.split(' ').first) ??
-                              30;
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: quizes_cont(
-                              name: quiz['name']!,
-                              date: quiz['date']!,
-                              duration: quiz['duration']!,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => QuestionPage(
-                                      questions: sampleQuestionModels,
-                                      initialIndex: 0,
-                                      durationMinutes: durationMinutes,
-                                      onSubmit: () {
-                                        // simple submission flow: show a dialog
-                                        showDialog(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text('Quiz submitted'),
-                                            content: const Text(
-                                                'Your answers have been recorded (demo).'),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.of(context).pop(),
-                                                child: const Text('OK'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                  decoration: BoxDecoration(
+                                    color: mainGreen.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '$count',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: mainGreen,
                                     ),
                                   ),
                                 );
                               },
                             ),
-                          );
-                        }).toList(),
-                    ],
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        BlocBuilder<QuizzesCubit, QuizzesState>(
+                          builder: (context, state) {
+                            // Loading State
+                            if (state is QuizzesLoading) {
+                              return const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(32.0),
+                                  child: CircularProgressIndicator(
+                                    color: mainGreen,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // Error State
+                            if (state is QuizzesError) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(32.0),
+                                  child: Column(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 48,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Text(
+                                        state.message,
+                                        style: const TextStyle(
+                                          color: Colors.red,
+                                          fontSize: 16,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      ElevatedButton.icon(
+                                        onPressed: () {
+                                          context
+                                              .read<QuizzesCubit>()
+                                              .refreshQuizzes();
+                                        },
+                                        icon: const Icon(Icons.refresh),
+                                        label: const Text('Retry'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: mainGreen,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                            vertical: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // Loaded State
+                            if (state is QuizzesLoaded) {
+                              if (filteredQuizzes.isEmpty) {
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 32),
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.search_off,
+                                          size: 48,
+                                          color: mainGreen.withOpacity(0.3),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          _searchQuery.isEmpty
+                                              ? 'No quizzes available'
+                                              : 'No quizzes found',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: mainGreen,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              return Column(
+                                children: filteredQuizzes
+                                    .asMap()
+                                    .entries
+                                    .map((entry) {
+                                  final quiz = entry.value;
+
+                                  final durationMinutes = int.tryParse(
+                                          (quiz['duration'] as String)
+                                              .split(' ')
+                                              .first) ??
+                                      30;
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: quizes_cont(
+                                      name: quiz['name'] as String,
+                                      date: quiz['date'] as String,
+                                      duration: quiz['duration'] as String,
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => QuestionPage(
+                                              questions: sampleQuestionModels,
+                                              initialIndex: 0,
+                                              durationMinutes: durationMinutes,
+                                              onSubmit: () {
+                                                // simple submission flow: show a dialog
+                                                showDialog(
+                                                  context: context,
+                                                  builder: (_) => AlertDialog(
+                                                    title: const Text(
+                                                        'Quiz submitted'),
+                                                    content: const Text(
+                                                        'Your answers have been recorded (demo).'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(),
+                                                        child: const Text('OK'),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }).toList(),
+                              );
+                            }
+
+                            // Initial State
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
