@@ -93,14 +93,13 @@ class CourseCard extends StatelessWidget {
     if (base64Data != null) {
       final imageBytes = _decodeBase64Image(base64Data);
       if (imageBytes != null) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Image.memory(
-            imageBytes,
-            height: 56,
-            // width: 50,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Icon(
+        return Image.memory(
+          imageBytes,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          errorBuilder: (_, __, ___) => Container(
+            color: Colors.grey[300],
+            child: Icon(
               Icons.broken_image,
               size: 50,
               color: mainGreen,
@@ -112,14 +111,13 @@ class CourseCard extends StatelessWidget {
 
     // If imagePath is provided and not a base64 string, use it as asset path
     if (imagePath != null && !_isBase64Image(imagePath)) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Image.asset(
-          imagePath!,
-          height: 50,
-          width: 50,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(
+      return Image.asset(
+        imagePath!,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (_, __, ___) => Container(
+          color: Colors.grey[300],
+          child: Icon(
             Icons.broken_image,
             size: 50,
             color: mainGreen,
@@ -129,8 +127,9 @@ class CourseCard extends StatelessWidget {
     }
 
     if (icon != null) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+      return Container(
+        color: Colors.grey[300],
+        width: double.infinity,
         child: Icon(
           icon,
           size: 48,
@@ -140,12 +139,13 @@ class CourseCard extends StatelessWidget {
     }
 
     // Default icon if nothing is provided
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+    return Container(
+      color: Colors.grey[300],
+      width: double.infinity,
       child: Icon(
         Icons.school,
-        size: 48,
-        color: mainGreen,
+        size: 50,
+        color: Colors.grey,
       ),
     );
   }

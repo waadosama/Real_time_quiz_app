@@ -23,6 +23,7 @@ class Quizes extends StatefulWidget {
 
 class _QuizesState extends State<Quizes> {
   String _searchQuery = '';
+  DateTime? _selectedDate;
 
   static const Color mainGreen = Color(0xFF0D4726);
   static const Color beigeLight = Color(0xFFFDF6EE);
@@ -32,44 +33,95 @@ class _QuizesState extends State<Quizes> {
     if (state.status != QuizzesStatus.success) return const [];
 
     final allQuizzes = state.quizzes;
-    if (_searchQuery.isEmpty) return allQuizzes;
-
-    final query = _searchQuery.toLowerCase().trim();
-
+    
+    // Filter by search query and date
     return allQuizzes.where((quiz) {
-      // Search in quiz name
-      if (quiz.name.toLowerCase().contains(query)) return true;
+       bool matchesQuery = true;
+       bool matchesDate = true;
 
-      // Search in date - format date in multiple ways for better matching
-      if (quiz.date != null) {
-        final date = quiz.date!;
-        final day = date.day.toString();
-        final month = date.month.toString();
-        final year = date.year.toString();
-        final monthName = DateFormat('MMM').format(date).toLowerCase(); // "dec"
-        final monthFullName =
-            DateFormat('MMMM').format(date).toLowerCase(); // "december"
-        final dateString = DateFormat('dd MMM yyyy')
-            .format(date)
-            .toLowerCase(); // "12 dec 2024"
-        final dateShort = DateFormat('dd/MM/yyyy').format(date); // "12/12/2024"
-        final dateIso = date.toIso8601String().toLowerCase();
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase().trim();
+        // Search in quiz name
+        if (quiz.name.toLowerCase().contains(query)) {
+           matchesQuery = true;
+        } else if (quiz.date != null) {
+             // Search in date - format date in multiple ways for better matching
+            final date = quiz.date!;
+            final day = date.day.toString();
+            final month = date.month.toString();
+            final year = date.year.toString();
+            final monthName = DateFormat('MMM').format(date).toLowerCase(); // "dec"
+            final monthFullName =
+                DateFormat('MMMM').format(date).toLowerCase(); // "december"
+            final dateString = DateFormat('dd MMM yyyy')
+                .format(date)
+                .toLowerCase(); // "12 dec 2024"
+            final dateShort = DateFormat('dd/MM/yyyy').format(date); // "12/12/2024"
+            final dateIso = date.toIso8601String().toLowerCase();
 
-        if (day.contains(query) ||
-            month.contains(query) ||
-            year.contains(query) ||
-            monthName.contains(query) ||
-            monthFullName.contains(query) ||
-            dateString.contains(query) ||
-            dateShort.contains(query) ||
-            dateIso.contains(query)) {
-          return true;
+            if (day.contains(query) ||
+                month.contains(query) ||
+                year.contains(query) ||
+                monthName.contains(query) ||
+                monthFullName.contains(query) ||
+                dateString.contains(query) ||
+                dateShort.contains(query) ||
+                dateIso.contains(query)) {
+              matchesQuery = true;
+            } else {
+               matchesQuery = false;
+            }
+        } else {
+           matchesQuery = false;
         }
       }
 
+      if (_selectedDate != null) {
+        if (quiz.date != null) {
+          final qDate = quiz.date!;
+          final sDate = _selectedDate!;
+          if (qDate.year == sDate.year &&
+              qDate.month == sDate.month &&
+              qDate.day == sDate.day) {
+            matchesDate = true;
+          } else {
+            matchesDate = false;
+          }
+        } else {
+          matchesDate = false;
+        }
+      }
 
-      return false;
+      return matchesQuery && matchesDate;
     }).toList();
+  }
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now,
+      firstDate: DateTime(2023),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: mainGreen,
+              onPrimary: Colors.white,
+              onSurface: mainGreen,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
   }
 
   int _parseDurationMinutes(String duration) {
@@ -106,6 +158,8 @@ class _QuizesState extends State<Quizes> {
     );
     return null;
   }
+
+  // ... (rest of the methods remain unchanged: _tryJoinQuiz, _releaseSlot, _updateAttemptProgress, _handleQuizTap) ...
 
   Future<bool> _tryJoinQuiz(QuizModel quiz) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -524,15 +578,60 @@ class _QuizesState extends State<Quizes> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ProfessionalSearchBar(
-                          hintText: 'Search quizzes...',
-                          mainGreen: mainGreen,
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
-                          },
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ProfessionalSearchBar(
+                                hintText: 'Search quizzes...',
+                                mainGreen: mainGreen,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _searchQuery = value;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            InkWell(
+                              onTap: _pickDate,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: _selectedDate != null ? mainGreen : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: mainGreen.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.calendar_month,
+                                  color: _selectedDate != null ? Colors.white : mainGreen,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                        if (_selectedDate != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: InputChip(
+                                label: Text(
+                                  DateFormat('EEE, MMM d, y').format(_selectedDate!),
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                backgroundColor: mainGreen,
+                                deleteIcon: const Icon(Icons.close, color: Colors.white, size: 18),
+                                onDeleted: () {
+                                  setState(() {
+                                    _selectedDate = null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 28),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
