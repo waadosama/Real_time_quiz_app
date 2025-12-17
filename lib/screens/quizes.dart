@@ -67,11 +67,6 @@ class _QuizesState extends State<Quizes> {
         }
       }
 
-      // Search in question count (e.g., "12" matches quizzes with 12 questions)
-      if (quiz.questionsCount.toString().contains(query)) return true;
-
-      // Search in duration (e.g., "30" matches "30 min")
-      if (quiz.duration.toLowerCase().contains(query)) return true;
 
       return false;
     }).toList();

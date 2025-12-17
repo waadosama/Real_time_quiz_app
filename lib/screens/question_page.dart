@@ -26,7 +26,7 @@ class QuestionPage extends StatefulWidget {
     super.key,
     required this.questions,
     this.initialIndex = 0,
-    this.durationMinutes = 30,
+    this.durationMinutes = 10,
     this.onAnswer,
     this.onSubmit,
     this.onSubmitScore,
@@ -149,9 +149,9 @@ class _QuestionPageState extends State<QuestionPage> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Text(
-                        'Question',
-                        style: TextStyle(
+                      Text(
+                        'Question ${_currentIndex + 1} of ${widget.questions.length}',
+                        style: const TextStyle(
                           color: QuestionPage.mainGreen,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -200,11 +200,7 @@ class _QuestionPageState extends State<QuestionPage> {
                         child: TrueFalseOption(
                           label: displayOptions[0],
                           isSelected: selected == 0,
-                          isCorrect: selected == null
-                              ? null
-                              : (selected == 0
-                                  ? _isCorrect[_currentIndex]
-                                  : null),
+                          isCorrect: null,
                           onTap: () => _selectAnswer(0),
                         ),
                       ),
@@ -213,11 +209,7 @@ class _QuestionPageState extends State<QuestionPage> {
                         child: TrueFalseOption(
                           label: displayOptions[1],
                           isSelected: selected == 1,
-                          isCorrect: selected == null
-                              ? null
-                              : (selected == 1
-                                  ? _isCorrect[_currentIndex]
-                                  : null),
+                          isCorrect: null,
                           onTap: () => _selectAnswer(1),
                         ),
                       ),
