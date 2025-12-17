@@ -94,10 +94,10 @@ class _QuizTimerState extends State<QuizTimer> {
     final phase = _getTimerPhase();
     final borderColor = _getBorderColor();
     final padding = widget.compact
-        ? const EdgeInsets.symmetric(horizontal: 15, vertical: 10.0)
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8.0)
         : const EdgeInsets.symmetric(horizontal: 11, vertical: 6.0);
-    final iconSize = widget.compact ? 20.0 : 13.0;
-    final fontSizeMain = widget.compact ? 20.0 : 13.0;
+    final iconSize = widget.compact ? 16.0 : 13.0;
+    final fontSizeMain = widget.compact ? 16.0 : 13.0;
     final fontSizeSub = widget.compact ? 16.0 : 15.0;
 
     final borderWidth = widget.compact ? 0.5 : 0.8;

@@ -150,10 +150,10 @@ class _QuestionPageState extends State<QuestionPage> {
                       ),
                       const SizedBox(width: 16),
                       Text(
-                        'Question ${_currentIndex + 1} of ${widget.questions.length}',
+                        'Question ${_currentIndex + 1}',
                         style: const TextStyle(
                           color: QuestionPage.mainGreen,
-                          fontSize: 28,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
                         ),
