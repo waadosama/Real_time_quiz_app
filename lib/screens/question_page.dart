@@ -26,7 +26,7 @@ class QuestionPage extends StatefulWidget {
     super.key,
     required this.questions,
     this.initialIndex = 0,
-    this.durationMinutes = 30,
+    this.durationMinutes = 10,
     this.onAnswer,
     this.onSubmit,
     this.onSubmitScore,
@@ -149,9 +149,9 @@ class _QuestionPageState extends State<QuestionPage> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Text(
-                        'Question',
-                        style: TextStyle(
+                      Text(
+                        'Question ${_currentIndex + 1} of ${widget.questions.length}',
+                        style: const TextStyle(
                           color: QuestionPage.mainGreen,
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
@@ -202,6 +202,7 @@ class _QuestionPageState extends State<QuestionPage> {
                           isSelected: selected == 0,
                           isCorrect:
                               null, // Don't show correct/wrong during quiz
+
                           onTap: () => _selectAnswer(0),
                         ),
                       ),
@@ -212,6 +213,7 @@ class _QuestionPageState extends State<QuestionPage> {
                           isSelected: selected == 1,
                           isCorrect:
                               null, // Don't show correct/wrong during quiz
+
                           onTap: () => _selectAnswer(1),
                         ),
                       ),
