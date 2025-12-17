@@ -200,11 +200,8 @@ class _QuestionPageState extends State<QuestionPage> {
                         child: TrueFalseOption(
                           label: displayOptions[0],
                           isSelected: selected == 0,
-                          isCorrect: selected == null
-                              ? null
-                              : (selected == 0
-                                  ? _isCorrect[_currentIndex]
-                                  : null),
+                          isCorrect:
+                              null, // Don't show correct/wrong during quiz
                           onTap: () => _selectAnswer(0),
                         ),
                       ),
@@ -213,11 +210,8 @@ class _QuestionPageState extends State<QuestionPage> {
                         child: TrueFalseOption(
                           label: displayOptions[1],
                           isSelected: selected == 1,
-                          isCorrect: selected == null
-                              ? null
-                              : (selected == 1
-                                  ? _isCorrect[_currentIndex]
-                                  : null),
+                          isCorrect:
+                              null, // Don't show correct/wrong during quiz
                           onTap: () => _selectAnswer(1),
                         ),
                       ),

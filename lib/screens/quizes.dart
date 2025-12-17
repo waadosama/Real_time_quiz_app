@@ -412,17 +412,17 @@ class _QuizesState extends State<Quizes> {
                 ),
           initialIndex: 0,
           durationMinutes: durationMinutes,
-          onSubmitScore: (score) => _releaseSlot(
-            quizId: quiz.id,
-            markCompleted: true,
-            score: score,
-            totalQuestions: totalQuestions,
-            durationMinutes: durationMinutes,
-          ),
-          onSubmit: () async {
+          onSubmitScore: (score) async {
+            await _releaseSlot(
+              quizId: quiz.id,
+              markCompleted: true,
+              score: score,
+              totalQuestions: totalQuestions,
+              durationMinutes: durationMinutes,
+            );
             if (!mounted) return;
             final showScore = quiz.showFinalScore;
-            final scoreText = 'Your score: \$score / ${quiz.questionsCount}';
+            final scoreText = 'Your score: $score / $totalQuestions';
             await showDialog(
               context: context,
               builder: (_) => AlertDialog(
@@ -444,10 +444,16 @@ class _QuizesState extends State<Quizes> {
               Navigator.of(context).pop(); // Back to quizzes list
             }
           },
+          onSubmit: () {
+            // This is called after score is shown, just navigate back
+            if (mounted) {
+              Navigator.of(context).pop(); // Back to quizzes list
+            }
+          },
           onExit: () => _releaseSlot(
             quizId: quiz.id,
             markCompleted: false,
-            score: 0,
+            score: 0, // Score is zero if student leaves
             totalQuestions: totalQuestions,
             durationMinutes: durationMinutes,
           ),
